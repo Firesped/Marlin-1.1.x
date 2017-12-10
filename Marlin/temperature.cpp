@@ -327,6 +327,7 @@ uint8_t Temperature::soft_pwm[HOTENDS];
               SERIAL_PROTOCOLPAIR(MSG_D, d);
               SERIAL_PROTOCOLPAIR(MSG_T_MIN, min);
               SERIAL_PROTOCOLPAIR(MSG_T_MAX, max);
+              SERIAL_EOL; //added for raise3d format
               if (cycles > 2) {
                 Ku = (4.0 * d) / (M_PI * (max - min) * 0.5);
                 Tu = ((float)(t_low + t_high) * 0.001);
@@ -336,9 +337,9 @@ uint8_t Temperature::soft_pwm[HOTENDS];
                 workKi = 2 * workKp / Tu;
                 workKd = workKp * Tu * 0.125;
                 SERIAL_PROTOCOLLNPGM("\n" MSG_CLASSIC_PID);
-                SERIAL_PROTOCOLPAIR(MSG_KP, workKp);
-                SERIAL_PROTOCOLPAIR(MSG_KI, workKi);
-                SERIAL_PROTOCOLLNPAIR(MSG_KD, workKd);
+                SERIAL_PROTOCOLPAIR(MSG_KP, workKp); SERIAL_EOL;
+                SERIAL_PROTOCOLPAIR(MSG_KI, workKi); SERIAL_EOL;
+                SERIAL_PROTOCOLLNPAIR(MSG_KD, workKd); SERIAL_EOL;
                 /**
                 workKp = 0.33*Ku;
                 workKi = workKp/Tu;
@@ -380,7 +381,9 @@ uint8_t Temperature::soft_pwm[HOTENDS];
       // Every 2 seconds...
       if (ELAPSED(ms, temp_ms + 2000UL)) {
         #if HAS_TEMP_HOTEND || HAS_TEMP_BED
-          print_heaterstates();
+          SERIAL_PROTOCOLPAIR(MSG_T, input); //added for raise3d format
+          SERIAL_PROTOCOLPAIR(MSG_AT, soft_pwm[hotend]); //added for raise3d format
+          //print_heaterstates(); //removed for raise3d format
           SERIAL_EOL;
         #endif
 

@@ -35,13 +35,14 @@
   /**
    * Marlin release version identifier
    */
-  #define SHORT_BUILD_VERSION "1.1.0"
+  #define SHORT_BUILD_VERSION "1.2.2"
 
   /**
    * Verbose version identifier which should contain a reference to the location
    * from where the binary was downloaded or the source code was compiled.
    */
-  #define DETAILED_BUILD_VERSION SHORT_BUILD_VERSION " (Github)"
+  #define MARLIN_BUILD_VERSION "1.1.0" //This line was created to show the true marlin build version in the detailed build version information.
+  #define DETAILED_BUILD_VERSION MARLIN_BUILD_VERSION " (Github)"
 
   /**
    * The STRING_DISTRIBUTION_DATE represents when the binary file was built,
@@ -70,7 +71,7 @@
   /**
    * Defines a generic printer name to be output to the LCD after booting Marlin.
    */
-  #define MACHINE_NAME "3D Printer"
+  #define MACHINE_NAME "Raise3D N-Series Printer"
 
   /**
    * The SOURCE_CODE_URL is the location where users will find the Marlin Source

@@ -138,6 +138,24 @@ void Endstops::init() {
     #endif
   #endif
 
+  #if ENABLED(RAISE3D_FILAMENT_RUNOUT_SENSOR)
+    #if defined(E0_MATERIAL_LACK_PIN) && E0_MATERIAL_LACK_PIN >= 0
+      SET_INPUT(E0_MATERIAL_LACK_PIN);
+      #ifdef ENDSTOPPULLUP_E0_LACK
+        WRITE(E0_MATERIAL_LACK_PIN,HIGH);
+      #endif
+    #endif
+  #endif
+
+  #if ENABLED(RAISE3D_FILAMENT_RUNOUT_SENSOR)
+    #if defined(E1_MATERIAL_LACK_PIN) && E1_MATERIAL_LACK_PIN >= 0
+      SET_INPUT(E1_MATERIAL_LACK_PIN);
+      #ifdef ENDSTOPPULLUP_E1_LACK
+       WRITE(E1_MATERIAL_LACK_PIN,HIGH);
+      #endif
+    #endif
+  #endif
+
 } // Endstops::init
 
 void Endstops::report_state() {
@@ -188,6 +206,53 @@ void Endstops::report_state() {
       }
     #endif
   }
+  #if ENABLED(RAISE3D_FILAMENT_RUNOUT_SENSOR)
+      static bool lack_checked_e0=0;//lack of materia
+      static bool lack_checked_e1=0;//lack of materia
+      static unsigned int lack_check=0;//times
+      #if ENABLED(RAISE3D_DEBUG)
+        SERIAL_ECHOLN("sensor ping");
+      #endif
+      lack_check++;
+        if(lack_check>=10){
+          lack_check=0;
+          //Lack of material testing
+          if (planner.lack_materia_sensor_state[0] == true) {
+            #if ENABLED(RAISE3D_DEBUG)
+              SERIAL_ECHOLN("testig Filament E0");
+            #endif
+            #if defined(E0_MATERIAL_LACK_PIN) && E0_MATERIAL_LACK_PIN > -1
+              if(READ(E0_MATERIAL_LACK_PIN)^planner.lack_materia_sensor_norm[0]){
+                if(lack_checked_e0==0){
+                  SERIAL_PROTOCOLLN("Custom: Filament Error T0");
+                  lack_checked_e0=1;
+                  }
+                }
+              else{
+                lack_checked_e0=0;
+                }
+          }
+          #endif
+          if (planner.lack_materia_sensor_state[1] == true) {
+            #if ENABLED(DUAL)
+              #if ENABLED(RAISE3D_DEBUG)
+                SERIAL_ECHOLN("testig Filament E1");
+              #endif
+              #if defined(E1_MATERIAL_LACK_PIN) && E1_MATERIAL_LACK_PIN > -1
+                if(READ(E1_MATERIAL_LACK_PIN)^planner.lack_materia_sensor_norm[1]){
+                  if(lack_checked_e1==0){
+                    SERIAL_PROTOCOLLN("Custom: Filament Error T1");
+                    lack_checked_e1=1;
+                    }
+                  }
+                  else{
+                    lack_checked_e1=0;
+                    }
+              #endif
+            #endif
+          }
+        }
+   #endif
 } // Endstops::report_state
 
 void Endstops::M119() {
@@ -232,6 +297,23 @@ void Endstops::M119() {
     SERIAL_PROTOCOLPGM(MSG_FILAMENT_RUNOUT_SENSOR);
     SERIAL_PROTOCOLLN(((READ(FIL_RUNOUT_PIN)^FIL_RUNOUT_INVERTING) ? MSG_ENDSTOP_HIT : MSG_ENDSTOP_OPEN));
   #endif
+    //Lack of material testing
+  #if ENABLED(RRAISE3D_FILAMENT_RUNOUT_SENSOR)
+    #if ENABLED(RAISE3D_E0_FILAMENT_SENSOR)
+      #if defined(E0_MATERIAL_LACK_PIN) && E0_MATERIAL_LACK_PIN > -1
+        SERIAL_PROTOCOLPGM("e0_lack: ");
+        SERIAL_PROTOCOLLN(((READ(E0_MATERIAL_LACK_PIN)^E0_LACK_ENDSTOP_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
+      #endif
+    #endif
+    #if ENABLED(RAISE3D_E1_FILAMENT_SENSOR) 
+      #if ENABLED(DUAL)
+        #if defined(E1_MATERIAL_LACK_PIN) && E1_MATERIAL_LACK_PIN > -1
+          SERIAL_PROTOCOLPGM("e1_lack: ");
+          SERIAL_PROTOCOLLN(((READ(E1_MATERIAL_LACK_PIN)^E1_LACK_ENDSTOP_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
+        #endif
+      #endif
+    #endif
+  #endif
 } // Endstops::M119
 
 #if ENABLED(Z_DUAL_ENDSTOPS)
@@ -250,7 +332,7 @@ void Endstops::M119() {
 
 // Check endstops - Called from ISR!
 void Endstops::update() {
-
+  
   #define _ENDSTOP(AXIS, MINMAX) AXIS ##_## MINMAX
   #define _ENDSTOP_PIN(AXIS, MINMAX) AXIS ##_## MINMAX ##_PIN
   #define _ENDSTOP_INVERTING(AXIS, MINMAX) AXIS ##_## MINMAX ##_ENDSTOP_INVERTING
@@ -282,6 +364,7 @@ void Endstops::update() {
     }
   #endif
 
+    
   /**
    * Define conditions for checking endstops
    */

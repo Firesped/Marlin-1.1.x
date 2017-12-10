@@ -6496,7 +6496,7 @@ inline void gcode_M104() {
 #if HAS_TEMP_HOTEND || HAS_TEMP_BED
 
   void print_heaterstates() {
-    #if HAS_TEMP_HOTEND
+/*    #if HAS_TEMP_HOTEND
       SERIAL_PROTOCOLPGM(" T:");
       SERIAL_PROTOCOL(thermalManager.degHotend(target_extruder));
       SERIAL_PROTOCOLPGM(" /");
@@ -6543,6 +6543,74 @@ inline void gcode_M104() {
       }
     #endif
   }
+#endif*/
+#if ENABLED(N_SERIES_PROTOCLE)
+      #if HOTENDS > 1
+        HOTEND_LOOP() {
+          SERIAL_PROTOCOLPAIR(" T", e);
+          SERIAL_PROTOCOLCHAR(":");
+          SERIAL_PROTOCOL(thermalManager.degHotend(e));
+          SERIAL_PROTOCOLPGM(" /");
+          SERIAL_PROTOCOL(thermalManager.degTargetHotend(e));
+          SERIAL_PROTOCOLPAIR(" F", e);
+          SERIAL_PROTOCOLCHAR(":");
+          SERIAL_PROTOCOL(flow_percentage[e]);
+        }
+      #endif
+      SERIAL_PROTOCOLPGM(" S:");
+      SERIAL_PROTOCOL(fanSpeeds[0]);
+      SERIAL_PROTOCOLPGM(" P:");
+      SERIAL_PROTOCOL(feedrate_percentage);
+    #else    
+      #if HAS_TEMP_HOTEND
+        SERIAL_PROTOCOLPGM(" T:");
+        SERIAL_PROTOCOL(thermalManager.degHotend(target_extruder), 1);
+        SERIAL_PROTOCOLPGM(" /");
+        SERIAL_PROTOCOL(thermalManager.degTargetHotend(target_extruder), 1);
+        #if ENABLED(SHOW_TEMP_ADC_VALUES)
+          SERIAL_PROTOCOLPAIR(" (", thermalManager.current_temperature_raw[target_extruder] / OVERSAMPLENR);
+          SERIAL_CHAR(')');
+        #endif
+      #endif
+      #if HAS_TEMP_BED
+        SERIAL_PROTOCOLPGM(" B:");
+        SERIAL_PROTOCOL(thermalManager.degBed(), 1);
+        SERIAL_PROTOCOLPGM(" /");
+        SERIAL_PROTOCOL(thermalManager.degTargetBed(), 1);
+        #if ENABLED(SHOW_TEMP_ADC_VALUES)
+          SERIAL_PROTOCOLPAIR(" (", thermalManager.current_temperature_bed_raw / OVERSAMPLENR);
+          SERIAL_CHAR(')');
+        #endif
+      #endif
+      #if HOTENDS > 1
+        HOTEND_LOOP() {
+          SERIAL_PROTOCOLPAIR(" T", e);
+          SERIAL_PROTOCOLCHAR(':');
+          SERIAL_PROTOCOL(thermalManager.degHotend(e), 1);
+          SERIAL_PROTOCOLPGM(" /");
+          SERIAL_PROTOCOL(thermalManager.degTargetHotend(e), 1);
+          #if ENABLED(SHOW_TEMP_ADC_VALUES)
+            SERIAL_PROTOCOLPAIR(" (", thermalManager.current_temperature_raw[e] / OVERSAMPLENR);
+            SERIAL_CHAR(')');
+          #endif
+        }
+      #endif
+    
+      SERIAL_PROTOCOLPGM(" @:");
+      SERIAL_PROTOCOL(thermalManager.getHeaterPower(target_extruder));
+      #if HAS_TEMP_BED
+        SERIAL_PROTOCOLPGM(" B@:");
+        SERIAL_PROTOCOL(thermalManager.getHeaterPower(-1));
+      #endif
+        #if HOTENDS > 1
+        HOTEND_LOOP() {
+          SERIAL_PROTOCOLPAIR(" @", e);
+          SERIAL_PROTOCOLCHAR(':');
+          SERIAL_PROTOCOL(thermalManager.getHeaterPower(e));
+        }
+      #endif
+    #endif
+  }
 #endif
 
 /**
@@ -6552,14 +6620,33 @@ inline void gcode_M105() {
   if (get_target_extruder_from_command(105)) return;
 
   #if HAS_TEMP_HOTEND || HAS_TEMP_BED
-    SERIAL_PROTOCOLPGM(MSG_OK);
+    #if ENABLED(N_SERIES_PROTOCLE)
+      #if HAS_TEMP_HOTEND
+        SERIAL_PROTOCOLPGM("ok T:");
+        SERIAL_PROTOCOL(thermalManager.degHotend(target_extruder));
+        SERIAL_PROTOCOLPGM(" /");
+        SERIAL_PROTOCOL(thermalManager.degTargetHotend(target_extruder));
+      #endif
+      #if HAS_TEMP_BED
+        SERIAL_PROTOCOLPGM(" B:");
+        SERIAL_PROTOCOL(thermalManager.degBed());
+        SERIAL_PROTOCOLPGM(" /");
+        SERIAL_PROTOCOL(thermalManager.degTargetBed());
+      #endif
+    #else
+      SERIAL_PROTOCOLPGM(MSG_OK);
+    #endif
     print_heaterstates();
   #else // !HAS_TEMP_HOTEND && !HAS_TEMP_BED
     SERIAL_ERROR_START;
     SERIAL_ERRORLNPGM(MSG_ERR_NO_THERMISTORS);
   #endif
-
-  SERIAL_EOL;
+  
+  #if ENABLED(N_SERIES_PROTOCLE)
+    SERIAL_PROTOCOLLN("");
+  #else
+    SERIAL_EOL;
+  #endif
 }
 
 #if ENABLED(AUTO_REPORT_TEMPERATURES) && (HAS_TEMP_HOTEND || HAS_TEMP_BED)
@@ -6723,18 +6810,45 @@ inline void gcode_M109() {
     now = millis();
     if (ELAPSED(now, next_temp_ms)) { //Print temp & remaining time every 1s while waiting
       next_temp_ms = now + 1000UL;
-      print_heaterstates();
+      #if ENABLED(N_SERIES_PROTOCLE)
+        SERIAL_PROTOCOLPGM("T:");
+        SERIAL_PROTOCOL(thermalManager.degHotend(target_extruder));
+        SERIAL_PROTOCOLPGM(" E:");
+        SERIAL_PROTOCOL((int)target_extruder);
+      #else
+        print_heaterstates();
+      #endif
       #if TEMP_RESIDENCY_TIME > 0
         SERIAL_PROTOCOLPGM(" W:");
         if (residency_start_ms) {
           long rem = (((TEMP_RESIDENCY_TIME) * 1000UL) - (now - residency_start_ms)) / 1000UL;
-          SERIAL_PROTOCOLLN(rem);
+          #if ENABLED(N_SERIES_PROTOCLE)
+            SERIAL_PROTOCOL(rem);
+          #else
+            SERIAL_PROTOCOLLN(rem);
+          #endif
         }
         else {
-          SERIAL_PROTOCOLLNPGM("?");
+          #if ENABLED(N_SERIES_PROTOCLE)
+            SERIAL_PROTOCOL( "?" );
+          #else
+            SERIAL_PROTOCOLLNPGM("?");
+          #endif
         }
       #else
         SERIAL_EOL;
+      #endif
+      #if ENABLED(N_SERIES_PROTOCLE)
+        SERIAL_PROTOCOLPGM(" D:");
+        SERIAL_PROTOCOL(thermalManager.degTargetHotend(target_extruder));
+        #if HAS_TEMP_BED
+          SERIAL_PROTOCOLPGM(" B:");
+          SERIAL_PROTOCOL(thermalManager.degBed());
+          SERIAL_PROTOCOLPGM(" /");
+          SERIAL_PROTOCOL(thermalManager.degTargetBed());
+        #endif
+        print_heaterstates();
+        SERIAL_PROTOCOLLN("");
       #endif
     }
 
@@ -6856,6 +6970,18 @@ inline void gcode_M109() {
       now = millis();
       if (ELAPSED(now, next_temp_ms)) { //Print Temp Reading every 1 second while heating up.
         next_temp_ms = now + 1000UL;
+      #if ENABLED(N_SERIES_PROTOCLE)
+          SERIAL_PROTOCOLPGM("T:");
+          SERIAL_PROTOCOL(thermalManager.degHotend(active_extruder));
+          SERIAL_PROTOCOLPGM(" E:");
+          SERIAL_PROTOCOL((int)active_extruder);
+          SERIAL_PROTOCOLPGM(" B:");
+          SERIAL_PROTOCOL(thermalManager.degBed());
+          SERIAL_PROTOCOLPGM(" D:");
+          SERIAL_PROTOCOL(thermalManager.degTargetBed());
+          print_heaterstates();
+          SERIAL_PROTOCOLLN("");
+      #else
         print_heaterstates();
         #if TEMP_BED_RESIDENCY_TIME > 0
           SERIAL_PROTOCOLPGM(" W:");
@@ -6869,6 +6995,7 @@ inline void gcode_M109() {
         #else
           SERIAL_EOL;
         #endif
+      #endif
       }
 
       idle();
@@ -9655,6 +9782,112 @@ void tool_change(const uint8_t tmp_extruder, const float fr_mm_s/*=0.0*/, bool n
 
   #endif //!MIXING_EXTRUDER || MIXING_VIRTUAL_TOOLS <= 1
 }
+/**
+ * F0-F1: Lack Material Sensor Command
+ *
+ *   S0      Turns Sensor off
+ *   S1      Turns Sensor On
+ *   N0     Sets sensor to Normally Open
+ *   N1     Sets Sensor to Normally Close
+ */
+
+inline void gcode_F0() {
+  SERIAL_ECHO_START;
+  SERIAL_ECHO("F0");
+    if (code_seen('S')) {
+      uint16_t sensor_set = code_value_ushort();
+      SERIAL_ECHO(" SETTING:");
+      SERIAL_ECHO(sensor_set);
+      if (sensor_set == 0) {
+        SERIAL_ECHO(" SET OFF ");
+        planner.lack_materia_sensor_state[0] = false;
+        }
+      else 
+        if (sensor_set == 1) {
+          SERIAL_ECHO(" SET ON ");        
+          planner.lack_materia_sensor_state[0] = true; 
+         }
+        else {
+          SERIAL_ECHOLN(MSG_INVALID_SENSOR_STATE);
+        }
+    }
+    if (code_seen('N')) {
+      uint16_t normally_set = code_value_ushort();
+      SERIAL_ECHO(" SETTING:");
+      SERIAL_ECHO(normally_set);
+      if (normally_set == 0) {
+        SERIAL_ECHO(" SET CLOSED ");
+        planner.lack_materia_sensor_norm[0]=false;
+        }
+      else
+        if (normally_set == 1) {
+          SERIAL_ECHO(" SET OPEN ");
+          planner.lack_materia_sensor_norm[0]=true;
+         }
+        else {
+          SERIAL_ECHOLN(MSG_INVALID_SENSOR_NORMAL);
+      }
+    }
+  SERIAL_ECHO(" STATE: ");
+  if (planner.lack_materia_sensor_state[0] == false) {
+    SERIAL_ECHO(MSG_SENSOR_STATE_OFF);
+  }
+  if (planner.lack_materia_sensor_state[0] == true) {
+    SERIAL_ECHO(MSG_SENSOR_STATE_ON);
+  }
+  SERIAL_ECHO(" NORMAL STATE: ");
+  if (planner.lack_materia_sensor_norm[0] == false) {
+    SERIAL_ECHOLN(MSG_SENSOR_NORMAL_STATE_CLOSED);
+  }
+  if (planner.lack_materia_sensor_norm[0] == true) {
+    SERIAL_ECHOLN(MSG_SENSOR_NORMAL_STATE_OPEN);
+  } 
+}
+
+inline void gcode_F1() {
+  SERIAL_ECHO_START;
+  SERIAL_ECHO("F1");
+    if (code_seen('S')) {
+      SERIAL_ECHO("SETTING STATE ");
+      uint16_t sensor_set = code_value_ushort();
+      if (sensor_set == 0) {
+        planner.lack_materia_sensor_state[1] = false;
+        }
+      if (sensor_set == 1) {
+        planner.lack_materia_sensor_state[1] = true; 
+        }
+      else {
+        SERIAL_ECHOLN(MSG_INVALID_SENSOR_STATE);
+      }
+    }
+    if (code_seen('N')) {
+      SERIAL_ECHO("SETTING NORMAL ");
+      uint16_t normally_set = code_value_ushort();
+      if (normally_set == 0) {
+        planner.lack_materia_sensor_norm[1]=false;
+        }
+      if (normally_set == 1) {
+        planner.lack_materia_sensor_norm[1]=true;
+        }
+      else {
+        SERIAL_ECHOLN(MSG_INVALID_SENSOR_NORMAL);
+      }
+    }
+  SERIAL_ECHO(" STATE: ");
+  if (planner.lack_materia_sensor_state[0] == false) {
+    SERIAL_ECHO(MSG_SENSOR_STATE_OFF);
+  }
+  if (planner.lack_materia_sensor_state[0] == true) {
+    SERIAL_ECHO(MSG_SENSOR_STATE_ON);
+  }
+  SERIAL_ECHO(" NORMAL STATE: ");
+  if (planner.lack_materia_sensor_norm[0] == false) {
+    SERIAL_ECHOLN(MSG_SENSOR_NORMAL_STATE_CLOSED);
+  }
+  if (planner.lack_materia_sensor_norm[0] == true) {
+    SERIAL_ECHOLN(MSG_SENSOR_NORMAL_STATE_OPEN);
+  } 
+}
 
 /**
  * T0-T3: Switch tool, usually switching extruders
@@ -10477,8 +10710,20 @@ void process_next_command() {
       case 999: // M999: Restart after being Stopped
         gcode_M999();
         break;
+
     }
     break;
+    case 'F': 
+      switch (codenum) { 
+        case 0:
+          gcode_F0();
+          break;
+        case 1:
+          gcode_F1();
+          break;
+      }
+      break;
+
 
     case 'T':
       gcode_T(codenum);
@@ -10532,6 +10777,16 @@ void ok_to_send() {
     }
     SERIAL_PROTOCOLPGM(" P"); SERIAL_PROTOCOL(int(BLOCK_BUFFER_SIZE - planner.movesplanned() - 1));
     SERIAL_PROTOCOLPGM(" B"); SERIAL_PROTOCOL(BUFSIZE - commands_in_queue);
+  #endif
+  #if ENABLED(N_SERIES_PROTOCLE)
+    SERIAL_PROTOCOL(':');
+     if (planner.block_buffer_tail == planner.block_buffer_head)
+  {
+  SERIAL_PROTOCOL(0);
+  }else
+  {
+    SERIAL_PROTOCOL((planner.block_buffer_head - planner.block_buffer_tail + BLOCK_BUFFER_SIZE)%BLOCK_BUFFER_SIZE);
+  }
   #endif
   SERIAL_EOL;
 }
