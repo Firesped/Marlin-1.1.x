@@ -1683,6 +1683,11 @@ void MarlinSettings::reset() {
       SERIAL_ECHOPAIR("  M900 K", planner.extruder_advance_k);
       SERIAL_ECHOLNPAIR(" R", planner.advance_ed_ratio);
     #endif
+    #if ENABLED(N_SERIES_PROTOCLE)
+      #if DISABLED(SDSUPPORT)
+         SERIAL_ECHOLNPGM(MSG_SD_INIT_FAIL);
+      #endif
+    #endif
   }
 
 #endif // !DISABLE_M503
